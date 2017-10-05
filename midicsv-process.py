@@ -33,11 +33,11 @@ class Note:
         self.velocity = noteEvent_on.velocity
         self.duration = noteEvent_off.tick - noteEvent_on.tick
     
-    def onTimeMillis(self, tempoMap):
-        return tempoMap.millisAtTick(self.tick)
+    def onTimeMicros(self, tempoMap):
+        return tempoMap.microsAtTick(self.tick)
     
-    def durationMillis(self, tempoMap):
-        return tempoMap.millisAtTick(self.tick + self.duration) - self.onTimeMillis(tempoMap)
+    def durationMicros(self, tempoMap):
+        return tempoMap.microsAtTick(self.tick + self.duration) - self.onTimeMicros(tempoMap)
     
     def octave(self):
         return (self.pitch / 12) - 1
@@ -57,17 +57,17 @@ class Note:
     def toString(self, tempoMap):
         return "%s,%s,%s,%s,%s,%s,%s,%s" % (\
             self.tick,
-            self.onTimeMillis(tempoMap),
+            self.onTimeMicros(tempoMap)/1000000.0,
             self.duration,
-            self.durationMillis(tempoMap),
+            self.durationMicros(tempoMap)/1000000.0,
             self.pitch,
+            self.fullNoteOctave(),
             self.velocity,
-            self.pitch,
             self.track)
 
 class TempoEvent:
     tick   = 0
-    millis = 0
+    micros = 0
     tempo  = 500000
 
 class TempoMap:
@@ -78,7 +78,7 @@ class TempoMap:
         tempoEvent = TempoEvent()
         tempoEvent.tick = tick
         tempoEvent.tempo = tempo
-        tempoEvent.millis = self.millisAtTick(tick)
+        tempoEvent.micros = self.microsAtTick(tick)
         self.tmap.append(tempoEvent)
     
     def tempoEventAtTick(self, tick):
@@ -89,9 +89,9 @@ class TempoMap:
             savedTempoEvent = tempoEvent
         return savedTempoEvent
     
-    def millisAtTick(self, tick):
+    def microsAtTick(self, tick):
         tempoEvent = self.tempoEventAtTick(tick)
-        return tempoEvent.millis + ((tick - tempoEvent.tick)*tempoEvent.tempo)/(self.tpqn*1000)
+        return tempoEvent.micros + ((tick - tempoEvent.tick)*tempoEvent.tempo)/self.tpqn
 
 rows = []
 for file in sys.argv[1:]:
@@ -124,7 +124,7 @@ for file in sys.argv[1:]:
         tick  = int(cells[1])
         type  =     cells[2]
         if type == "Header":
-            tpqn = int(cells[5]) # set tickcells per quarter note
+            tpqn = int(cells[5]) # set ticks per quarter note
             tempoMap.tpqn = tpqn
         elif type == "Tempo":
             tempo = int(cells[3])
@@ -149,7 +149,7 @@ for file in sys.argv[1:]:
     onTicks.sort()
     rank = 0
     prevTick = onTicks[0]
-    print "start_ticks,start_ms,dur_ticks,dur_ms,pitch,fullNoteOctave,part" # + ",order"
+    print "start_ticks,start_secs,dur_ticks,dur_secs,pitch,fullNoteOctave,velocity,part"
     for i, note in enumerate(notes):
         tick = onTicks[i]
         if tick != prevTick:
